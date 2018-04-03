@@ -208,8 +208,8 @@ class ReactPerspCrop extends React.PureComponent {
     }
 
     getPolygonPoints() {
-        const { handle0, handle1, handle2, handle3 } = this.state;
-        return `${handle0.x+6},${handle0.y+6} ${handle1.x+6},${handle1.y+6} ${handle2.x+6},${handle2.y+6} ${handle3.x+6},${handle3.y+6}`;
+        const { img, handle0, handle1, handle2, handle3 } = this.state;
+        return `${img.x+handle0.x+6},${img.y+handle0.y+6} ${img.x+handle1.x+6},${img.y+handle1.y+6} ${img.x+handle2.x+6},${img.y+handle2.y+6} ${img.x+handle3.x+6},${img.y+handle3.y+6}`;
     }
 
     render() {
@@ -221,6 +221,7 @@ class ReactPerspCrop extends React.PureComponent {
                 onTouchStart={this.onMouseTouchDown}
                 onMouseDown={this.onMouseTouchDown}
                 onWheel={this.onWheel}
+                {...this.props}
             >
                 <img src={src} alt="PerspCropper" className="ReactPerspCrop-img"
                     style={{ left: img.x, top: img.y }}
@@ -239,13 +240,13 @@ class ReactPerspCrop extends React.PureComponent {
                 </svg>
 
 
-                <div className="ReactPerspCrop-handle" style={{ left: handle0.x, top: handle0.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle0.x, top: img.y + handle0.y }}
                     ref={this.registerRef('handle0')} />
-                <div className="ReactPerspCrop-handle" style={{ left: handle1.x, top: handle1.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle1.x, top: img.y + handle1.y }}
                     ref={this.registerRef('handle1')} />
-                <div className="ReactPerspCrop-handle" style={{ left: handle2.x, top: handle2.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle2.x, top: img.y + handle2.y }}
                     ref={this.registerRef('handle2')} />
-                <div className="ReactPerspCrop-handle" style={{ left: handle3.x, top: handle3.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle3.x, top: img.y + handle3.y }}
                     ref={this.registerRef('handle3')} />
             </div>
         );
