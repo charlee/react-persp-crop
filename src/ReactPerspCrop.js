@@ -64,6 +64,7 @@ class ReactPerspCrop extends React.PureComponent {
         dragging: false,
         img: { x: 0, y: 0 },
         zoomLevel: 0,
+        polygon: { x: 0, y: 0 },
         handle0: { x: 20, y: 20 },
         handle1: { x: 100, y: 20 },
         handle2: { x: 100, y: 100 },
@@ -119,13 +120,48 @@ class ReactPerspCrop extends React.PureComponent {
                 return names[i];
             }
         }
-        return 'img';
+
+
+        // If the handles are not clicked, then try to find out if the polygon is clicked
+        let offset = this.getElementOffset(this.containerRef);
+        let pos = this.getClientPos(e);
+        pos.x -= offset.left;
+        pos.y -= offset.top;
+
+        if (this.isInPolygon(pos)) {
+            return 'polygon';
+        } else {
+            return 'img';
+        }
+    }
+
+    /**
+     * Test if a point is inside the handle polygon
+     */
+    isInPolygon(pos) {
+        const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
+        let ps = [ handle0, handle1, handle2, handle3 ];
+        ps = ps.map(p => ({ x: p.x + img.x + polygon.x, y: p.y + img.y + polygon.y }));
+
+        let intersectionCount = 0;
+
+        for (let i = 0; i < 4; i++) {
+            const p1 = ps[i];
+            const p2 = ps[i === 3 ? 0 : i + 1];
+
+            let t = (pos.y - p1.y) / (p2.y - p1.y);
+            let x = p1.x + (p2.x - p1.x) * t;
+            if (x > pos.x && t >= 0 && t < 1) {
+                intersectionCount++;
+            }
+        }
+
+        return (intersectionCount % 2 === 1);
     }
 
     onMouseTouchDown = (e) => {
 
         let name = this.findDraggingObj(e);
-        console.log(name);
         if (name) {
             const clientPos = this.getClientPos(e);
             this.setState((prevState, props) => ({
@@ -208,13 +244,15 @@ class ReactPerspCrop extends React.PureComponent {
     }
 
     getPolygonPoints() {
-        const { img, handle0, handle1, handle2, handle3 } = this.state;
-        return `${img.x+handle0.x+6},${img.y+handle0.y+6} ${img.x+handle1.x+6},${img.y+handle1.y+6} ${img.x+handle2.x+6},${img.y+handle2.y+6} ${img.x+handle3.x+6},${img.y+handle3.y+6}`;
+        const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
+        const x = img.x + polygon.x;
+        const y = img.y + polygon.y;
+        return `${x+handle0.x+6},${y+handle0.y+6} ${x+handle1.x+6},${y+handle1.y+6} ${x+handle2.x+6},${y+handle2.y+6} ${x+handle3.x+6},${y+handle3.y+6}`;
     }
 
     render() {
         const { src } = this.props;
-        const { img, handle0, handle1, handle2, handle3 } = this.state;
+        const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
 
         return (
             <div className="ReactPerspCrop-root" ref={(n) => { this.containerRef = n; }}
@@ -240,13 +278,13 @@ class ReactPerspCrop extends React.PureComponent {
                 </svg>
 
 
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle0.x, top: img.y + handle0.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle0.x, top: img.y + polygon.y + handle0.y }}
                     ref={this.registerRef('handle0')} />
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle1.x, top: img.y + handle1.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle1.x, top: img.y + polygon.y + handle1.y }}
                     ref={this.registerRef('handle1')} />
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle2.x, top: img.y + handle2.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle2.x, top: img.y + polygon.y + handle2.y }}
                     ref={this.registerRef('handle2')} />
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + handle3.x, top: img.y + handle3.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle3.x, top: img.y + polygon.y + handle3.y }}
                     ref={this.registerRef('handle3')} />
             </div>
         );
