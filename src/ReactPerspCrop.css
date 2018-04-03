@@ -1,0 +1,39 @@
+.ReactPerspCrop-root {
+    min-width: 400px;
+    min-height: 300px;
+    overflow: hidden;
+    border: solid 1px #ccc;
+    position: relative;
+
+    background-color: #fff;
+    background-image: 
+        linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%, #ddd),
+        linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%, #ddd);
+    background-size: 32px 32px;
+    background-position: 0 0, 16px 16px;
+    z-index: 0;
+}
+
+.ReactPerspCrop-img {
+    position: absolute;
+    z-index: 0;
+}
+
+.ReactPerspCrop-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #eee;
+    cursor: pointer;
+    border: solid 1px #03f;
+    z-index: 20;
+}
+
+.ReactPerspCrop-frame {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 10;
+}
