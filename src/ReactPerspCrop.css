@@ -37,3 +37,32 @@
     left: 0;
     z-index: 10;
 }
+
+.ReactPerspCrop-overlay-button {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 30;
+    font-size: 12px;
+    padding: 4px 24px;
+    border-width: 0;
+    font-weight: 600;
+    color: #333;
+    background: #fff;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.1s;
+    box-shadow: 2px 2px #000;
+}
+
+.ReactPerspCrop-overlay-button:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px #000;
+    opacity: 1;
+}
+
+.ReactPerspCrop-overlay-button:active {
+    transform: none;
+    box-shadow: none;
+    opacity: 1;
+}

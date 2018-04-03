@@ -55,6 +55,9 @@ const styles = {
 class ReactPerspCrop extends React.PureComponent {
     static propTypes = {
         src: PropTypes.string.isRequired,
+        onCrop: PropTypes.func.isRequired,
+        outputWidth: PropTypes.number.isRequired,
+        outputHeight: PropTypes.number.isRequired,
     }
 
     state = {
@@ -203,10 +206,10 @@ class ReactPerspCrop extends React.PureComponent {
     computeAffineMatrix(p0, p1) {
         let A = [], B = [];
         for (let i = 0; i < 4; i++) {
-            let x = p0[i][0];
-            let y = p0[i][1];
-            let u = p1[i][0];
-            let v = p1[i][1];
+            let x = p0[i].x;
+            let y = p0[i].y;
+            let u = p1[i].x;
+            let v = p1[i].y;
 
             A.push([x, y, 1, 0, 0, 0, -x * u, -y * u]);
             A.push([0, 0, 0, x, y, 1, -x * v, -y * v]);
@@ -214,7 +217,7 @@ class ReactPerspCrop extends React.PureComponent {
             B.push(v);
         }
 
-        return math.multiply(math.inv(A), B);
+        return math.lusolve(A, B);
     }
 
     onMouseTouchMove = (e) => {
@@ -243,6 +246,61 @@ class ReactPerspCrop extends React.PureComponent {
         this.objRefs[name] = n;
     }
 
+    handleCrop = () => {
+        const { outputWidth, outputHeight } = this.props;
+        const { polygon, handle0, handle1, handle2, handle3 } = this.state;
+
+        // Crop the image
+        let p0 = [handle0, handle1, handle2, handle3];
+        p0 = p0.map(p => ({ x: p.x + polygon.x, y: p.y + polygon.y }));
+
+        let p1 = [
+            { x: 0, y: 0 },
+            { x: outputWidth, y: 0 },
+            { x: outputWidth, y: outputHeight },
+            { x: 0, y: outputHeight },
+        ];
+
+        let H = this.computeAffineMatrix(p0, p1);
+        H.push(1);
+        H = math.reshape(H, [3, 3]);
+
+        let M = math.inv(H);
+        M = math.divide(M, M[2][2]);
+
+        // draw cropped image
+        const canvas = document.createElement('canvas');
+        canvas.width = this.objRefs.img.width;
+        canvas.height = this.objRefs.img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(this.objRefs.img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, this.objRefs.img.width, this.objRefs.img.height);
+        const convertedImage = ctx.createImageData(outputWidth, outputHeight);
+
+        for (let x = 0; x < outputWidth; x++) {
+            for (let y = 0; y < outputHeight; y++) {
+                let p = math.multiply(M, [x, y, 1]);
+                p = math.divide(p, p[2]);
+                let src = (parseInt(p[1]) * imageData.width + parseInt(p[0])) * 4;
+                let target = (y * outputWidth + x) * 4;
+                for (let i = 0; i < 4; i++) {
+                    convertedImage.data[target + i] = imageData.data[src + i];
+                }
+            }
+        }
+
+        const outputCanvas = document.createElement('canvas');
+        outputCanvas.width = outputWidth;
+        outputCanvas.height = outputHeight;
+        const outputCtx = outputCanvas.getContext('2d');
+        outputCtx.putImageData(convertedImage, 0, 0);
+
+        outputCanvas.toBlob((file) => {
+            this.props.onCrop(file);
+        });
+    }
+
     getPolygonPoints() {
         const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
         const x = img.x + polygon.x;
@@ -255,11 +313,11 @@ class ReactPerspCrop extends React.PureComponent {
         const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
 
         return (
-            <div className="ReactPerspCrop-root" ref={(n) => { this.containerRef = n; }}
+            <div className={`ReactPerspCrop-root ${this.props.className}`} ref={(n) => { this.containerRef = n; }}
                 onTouchStart={this.onMouseTouchDown}
                 onMouseDown={this.onMouseTouchDown}
                 onWheel={this.onWheel}
-                {...this.props}
+                style={this.props.style}
             >
                 <img src={src} alt="PerspCropper" className="ReactPerspCrop-img"
                     style={{ left: img.x, top: img.y }}
@@ -286,6 +344,8 @@ class ReactPerspCrop extends React.PureComponent {
                     ref={this.registerRef('handle2')} />
                 <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle3.x, top: img.y + polygon.y + handle3.y }}
                     ref={this.registerRef('handle3')} />
+
+                <button className="ReactPerspCrop-overlay-button" onClick={this.handleCrop}>Crop</button>
             </div>
         );
     }
