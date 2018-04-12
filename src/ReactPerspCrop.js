@@ -1,5 +1,6 @@
 import React from 'react';
 import math from 'mathjs';
+import dlt from 'dltjs';
 import PropTypes from 'prop-types';
 
 import './ReactPerspCrop.css';
@@ -203,23 +204,6 @@ class ReactPerspCrop extends React.PureComponent {
         }
     }
 
-    computeAffineMatrix(p0, p1) {
-        let A = [], B = [];
-        for (let i = 0; i < 4; i++) {
-            let x = p0[i].x;
-            let y = p0[i].y;
-            let u = p1[i].x;
-            let v = p1[i].y;
-
-            A.push([x, y, 1, 0, 0, 0, -x * u, -y * u]);
-            A.push([0, 0, 0, x, y, 1, -x * v, -y * v]);
-            B.push(u);
-            B.push(v);
-        }
-
-        return math.lusolve(A, B);
-    }
-
     onMouseTouchMove = (e) => {
         if (this.state.dragging) {
             const clientPos = this.getClientPos(e);
@@ -252,20 +236,18 @@ class ReactPerspCrop extends React.PureComponent {
 
         // Crop the image
         let p0 = [handle0, handle1, handle2, handle3];
-        p0 = p0.map(p => ({ x: p.x + polygon.x, y: p.y + polygon.y }));
+        p0 = p0.map(p => ([ p.x + polygon.x, p.y + polygon.y ]));
 
         let p1 = [
-            { x: 0, y: 0 },
-            { x: outputWidth, y: 0 },
-            { x: outputWidth, y: outputHeight },
-            { x: 0, y: outputHeight },
+
+            [ 0, 0 ],
+            [ outputWidth, 0 ],
+            [ outputWidth, outputHeight ],
+            [ 0, outputHeight ],
         ];
 
-        let H = this.computeAffineMatrix(p0, p1);
-        H.push(1);
-        H = math.reshape(H, [3, 3]);
-
-        let M = math.inv(H);
+        let M = dlt.dlt2d(p0, p1);
+        M = math.inv(M);
         M = math.divide(M, M[2][2]);
 
         // draw cropped image
@@ -280,8 +262,7 @@ class ReactPerspCrop extends React.PureComponent {
 
         for (let x = 0; x < outputWidth; x++) {
             for (let y = 0; y < outputHeight; y++) {
-                let p = math.multiply(M, [x, y, 1]);
-                p = math.divide(p, p[2]);
+                let p = dlt.transform2d(M, [x, y]);
                 let src = (parseInt(p[1]) * imageData.width + parseInt(p[0])) * 4;
                 let target = (y * outputWidth + x) * 4;
                 for (let i = 0; i < 4; i++) {
