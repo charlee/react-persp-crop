@@ -66,13 +66,13 @@ class ReactPerspCrop extends React.PureComponent {
         dragStartObj: null,
         dragStartObjPos: null,
         dragging: false,
-        img: { x: 0, y: 0 },
+        img: [0, 0],
         zoomLevel: 0,
-        polygon: { x: 0, y: 0 },
-        handle0: { x: 20, y: 20 },
-        handle1: { x: 100, y: 20 },
-        handle2: { x: 100, y: 100 },
-        handle3: { x: 20, y: 100 },
+        polygon: [0, 0],
+        handle0: [20, 20],
+        handle1: [100, 20],
+        handle2: [100, 100],
+        handle3: [20, 100],
         frameStyle: {},
     }
 
@@ -96,10 +96,10 @@ class ReactPerspCrop extends React.PureComponent {
         const rect = el.getBoundingClientRect();
         const doc = document.documentElement;
 
-        return {
-            top: (rect.top + window.pageYOffset) - doc.clientTop,
-            left: (rect.left + window.pageXOffset) - doc.clientLeft,
-        };
+        return [
+            (rect.top + window.pageYOffset) - doc.clientTop,
+            (rect.left + window.pageXOffset) - doc.clientLeft,
+        ];
     }
 
     /**
@@ -107,10 +107,10 @@ class ReactPerspCrop extends React.PureComponent {
      * @param {Event} e 
      */
     getClientPos(e) {
-        return {
-            x: e.touches ? e.touches[0].clientX : e.clientX,
-            y: e.touches ? e.touches[0].clientY : e.clientY,
-        }
+        return [
+            e.touches ? e.touches[0].clientX : e.clientX,
+            e.touches ? e.touches[0].clientY : e.clientY,
+        ]
     }
 
     /**
@@ -129,8 +129,7 @@ class ReactPerspCrop extends React.PureComponent {
         // If the handles are not clicked, then try to find out if the polygon is clicked
         let offset = this.getElementOffset(this.containerRef);
         let pos = this.getClientPos(e);
-        pos.x -= offset.left;
-        pos.y -= offset.top;
+        pos = math.subtract(pos, offset);
 
         if (this.isInPolygon(pos)) {
             return 'polygon';
@@ -145,7 +144,7 @@ class ReactPerspCrop extends React.PureComponent {
     isInPolygon(pos) {
         const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
         let ps = [ handle0, handle1, handle2, handle3 ];
-        ps = ps.map(p => ({ x: p.x + img.x + polygon.x, y: p.y + img.y + polygon.y }));
+        ps = ps.map(p => math.add(p, img, polygon));
 
         let intersectionCount = 0;
 
@@ -153,9 +152,9 @@ class ReactPerspCrop extends React.PureComponent {
             const p1 = ps[i];
             const p2 = ps[i === 3 ? 0 : i + 1];
 
-            let t = (pos.y - p1.y) / (p2.y - p1.y);
-            let x = p1.x + (p2.x - p1.x) * t;
-            if (x > pos.x && t >= 0 && t < 1) {
+            let t = (pos[1] - p1[1]) / (p2[1] - p1[1]);
+            let x = p1[0] + (p2[0] - p1[0]) * t;
+            if (x > pos[0] && t >= 0 && t < 1) {
                 intersectionCount++;
             }
         }
@@ -212,10 +211,7 @@ class ReactPerspCrop extends React.PureComponent {
 
                 if (name !== null) {
                     return {
-                        [name]: {
-                            x: prevState.dragStartObjPos.x + (clientPos.x - prevState.dragStartEventPos.x),
-                            y: prevState.dragStartObjPos.y + (clientPos.y - prevState.dragStartEventPos.y),
-                        }
+                        [name]: math.subtract(math.add(prevState.dragStartObjPos, clientPos), prevState.dragStartEventPos),
                     };
 
                 } else {
@@ -236,10 +232,9 @@ class ReactPerspCrop extends React.PureComponent {
 
         // Crop the image
         let p0 = [handle0, handle1, handle2, handle3];
-        p0 = p0.map(p => ([ p.x + polygon.x, p.y + polygon.y ]));
+        p0 = p0.map(p => math.add(p, polygon));
 
         let p1 = [
-
             [ 0, 0 ],
             [ outputWidth, 0 ],
             [ outputWidth, outputHeight ],
@@ -284,14 +279,19 @@ class ReactPerspCrop extends React.PureComponent {
 
     getPolygonPoints() {
         const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
-        const x = img.x + polygon.x;
-        const y = img.y + polygon.y;
-        return `${x+handle0.x+6},${y+handle0.y+6} ${x+handle1.x+6},${y+handle1.y+6} ${x+handle2.x+6},${y+handle2.y+6} ${x+handle3.x+6},${y+handle3.y+6}`;
+        let points = [handle0, handle1, handle2, handle3];
+        points = points.map(p => math.add(img, polygon, p, [6, 6]));
+
+        return points.map(p => p.join(',')).join(' ');
     }
 
     render() {
         const { src } = this.props;
         const { img, polygon, handle0, handle1, handle2, handle3 } = this.state;
+
+        let handles = [handle0, handle1, handle2, handle3];
+        handles = handles.map(p => math.add(img, polygon, p));
+        
 
         return (
             <div className={`ReactPerspCrop-root ${this.props.className}`} ref={(n) => { this.containerRef = n; }}
@@ -301,7 +301,7 @@ class ReactPerspCrop extends React.PureComponent {
                 style={this.props.style}
             >
                 <img src={src} alt="PerspCropper" className="ReactPerspCrop-img"
-                    style={{ left: img.x, top: img.y }}
+                    style={{ left: img[0], top: img[1] }}
                     ref={this.registerRef('img')}
                 />
 
@@ -317,13 +317,13 @@ class ReactPerspCrop extends React.PureComponent {
                 </svg>
 
 
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle0.x, top: img.y + polygon.y + handle0.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: handles[0][0], top: handles[0][1] }}
                     ref={this.registerRef('handle0')} />
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle1.x, top: img.y + polygon.y + handle1.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: handles[1][0], top: handles[1][1] }}
                     ref={this.registerRef('handle1')} />
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle2.x, top: img.y + polygon.y + handle2.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: handles[2][0], top: handles[2][1] }}
                     ref={this.registerRef('handle2')} />
-                <div className="ReactPerspCrop-handle" style={{ left: img.x + polygon.x + handle3.x, top: img.y + polygon.y + handle3.y }}
+                <div className="ReactPerspCrop-handle" style={{ left: handles[3][0], top: handles[3][1] }}
                     ref={this.registerRef('handle3')} />
 
                 <button className="ReactPerspCrop-overlay-button" onClick={this.handleCrop}>Crop</button>
