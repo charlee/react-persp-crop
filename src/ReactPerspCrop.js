@@ -6,6 +6,56 @@ import PropTypes from 'prop-types';
 import './ReactPerspCrop.css';
 
 
+class ImageDataContainer {
+
+    /**
+     * Init a container with the reuslt of context.getImageData()
+     * @param {ImageData} imageData 
+     */
+    constructor(imageData) {
+        this.imageData = imageData;
+    }
+
+    getColor(x, y) {
+        let idx = (y * this.imageData.width + x) * 4;
+        return Array.from(this.imageData.data.slice(idx, idx + 4));
+    }
+
+    setColor(x, y, color) {
+        let idx = (y * this.imageData.width + x) * 4;
+        for (let i = 0; i < 4; i++) {
+            this.imageData.data[idx + i] = color[i];
+        }
+    }
+
+    /**
+     * Interpolate color for point (x, y).
+     * @param {float} x 
+     * @param {float} y 
+     */
+    interpolate(x, y) {
+        let x1 = parseInt(x);
+        let y1 = parseInt(y);
+        let x2 = x1 + 1;
+        let y2 = y1 + 1;
+        let dx = x - x1;
+        let dy = y - y1;
+
+        let q11 = this.getColor(x1, y1);
+        let q21 = this.getColor(x2, y1);
+        let q12 = this.getColor(x1, y2);
+        let q22 = this.getColor(x2, y2);
+
+        let r1 = math.add(math.multiply(q11, 1 - dx), math.multiply(q21, dx));
+        let r2 = math.add(math.multiply(q12, 1 - dx), math.multiply(q22, dx));
+
+        let r = math.add(math.multiply(r1, 1 - dy), math.multiply(r2, dy));
+
+        return r;
+    }
+}
+
+
 const styles = {
     root: {
         maxWidth: 600,
@@ -252,17 +302,19 @@ class ReactPerspCrop extends React.PureComponent {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(this.objRefs.img, 0, 0);
 
-        const imageData = ctx.getImageData(0, 0, this.objRefs.img.width, this.objRefs.img.height);
-        const convertedImage = ctx.createImageData(outputWidth, outputHeight);
+        const image = new ImageDataContainer(ctx.getImageData(0, 0, this.objRefs.img.width, this.objRefs.img.height));
+        const convertedImage = new ImageDataContainer(ctx.createImageData(outputWidth, outputHeight));
 
         for (let x = 0; x < outputWidth; x++) {
             for (let y = 0; y < outputHeight; y++) {
+
+                // p is the coordinate in the source image
                 let p = dlt.transform2d(M, [x, y]);
-                let src = (parseInt(p[1]) * imageData.width + parseInt(p[0])) * 4;
-                let target = (y * outputWidth + x) * 4;
-                for (let i = 0; i < 4; i++) {
-                    convertedImage.data[target + i] = imageData.data[src + i];
-                }
+
+                // Interpolate the color for point p
+                let color = image.interpolate(p[0], p[1]);
+
+                convertedImage.setColor(x, y, color);
             }
         }
 
@@ -270,7 +322,7 @@ class ReactPerspCrop extends React.PureComponent {
         outputCanvas.width = outputWidth;
         outputCanvas.height = outputHeight;
         const outputCtx = outputCanvas.getContext('2d');
-        outputCtx.putImageData(convertedImage, 0, 0);
+        outputCtx.putImageData(convertedImage.imageData, 0, 0);
 
         outputCanvas.toBlob((file) => {
             this.props.onCrop(file);
