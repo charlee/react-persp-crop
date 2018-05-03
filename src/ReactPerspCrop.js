@@ -34,8 +34,8 @@ class ImageDataContainer {
      * @param {float} y 
      */
     interpolate(x, y) {
-        let x1 = parseInt(x);
-        let y1 = parseInt(y);
+        let x1 = parseInt(x, 10);
+        let y1 = parseInt(y, 10);
         let x2 = x1 + 1;
         let y2 = y1 + 1;
         let dx = x - x1;
